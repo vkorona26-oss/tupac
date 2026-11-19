@@ -1,7 +1,7 @@
 // Small enough to stay readable: sticky nav state, release links, nothing else.
 
 // Set when the repository is published: "owner/repo".
-const REPO = '2p-executor/2p';
+const REPO = 'vkorona26-oss/2p';
 const VERSION = '3.2.0';
 
 const nav = document.getElementById('nav');
