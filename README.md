@@ -1,14 +1,17 @@
-# 2P — download site
+# Tupac — download site and protection manifest
 
-Static marketing and download page for the 2P workspace. No framework, no build
-step, no external requests: three files and five screenshots.
+Static marketing and download page for the Tupac workspace, plus the pack
+manifest the app reads. No framework, no build step, no external requests.
 
 ```
 site/
-  index.html     hero, features, gallery, download, requirements, FAQ
+  index.html     hero, features, screens, updates, download, requirements, FAQ
   styles.css     one page, one accent, responsive down to 360 px
   app.js         sticky nav, release links, anchor offset
   assets/        logo.svg + app screenshots
+  protection/
+    manifest.json          what the newest pack is, per channel
+    packs/<version>.json   signature table for one Roblox client build
   .github/workflows/pages.yml   GitHub Pages deploy on push to main
 ```
 
@@ -28,24 +31,35 @@ Set the repository once in `app.js`:
 const REPO = 'owner/repo';
 ```
 
-Then push and let the workflow publish Pages. Release assets should be named
+Then push and let the workflow publish Pages. Release assets must be named
 exactly as the page expects:
 
-- `2P-3.2.0-Setup.exe`
-- `2P-3.2.0-portable.zip`
-
-To create the repository and the release:
+- `Tupac-4.0.0-Setup.exe`
+- `Tupac-4.0.0-portable.zip`
 
 ```bash
 gh auth login
 cd site
-git init -b main
-git add .
-git commit -m "2P download site"
-gh repo create 2p-executor/2p --public --source . --remote origin --push
-gh release create v3.2.0 "../app/dist/2P-3.2.0-Setup.exe" "../app/dist/2P-3.2.0-portable.zip" \
-  --title "2P 3.2.0" --notes "First public build."
+gh repo create <owner>/tupac --public --source . --remote origin --push
+gh release create v4.0.0 ../app/dist/Tupac-4.0.0-Setup.exe ../app/dist/Tupac-4.0.0-portable.zip \
+  --title "Tupac 4.0.0" --notes-file ../app/dist/release-notes.md
 ```
 
-If the owner in `REPO` differs from the account you authenticate with, change
-`REPO` before pushing.
+## Protection packs
+
+A pack is the signature table for one Roblox client build. Regenerate it from the
+loader's header whenever the table changes:
+
+```bash
+python scripts/make-pack.py --version 4.0.0 --build version-xxxxxxxx
+```
+
+That writes `protection/packs/<version>.json`, recomputes its SHA-256 and updates
+`protection/manifest.json`. Commit both. The app fetches the manifest from
+`https://raw.githubusercontent.com/<owner>/tupac/main/protection/manifest.json`,
+verifies the pack against the hash, and stores it under
+`%LOCALAPPDATA%\Tupac\protection\<version>\pack.json`.
+
+Unresolved signatures stay as empty strings. The app reports the pack as carrying
+no signatures and the loader refuses to inject — a wrong offset is worse than a
+clear refusal.
