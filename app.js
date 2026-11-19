@@ -1,8 +1,8 @@
 // Small enough to stay readable: sticky nav state, release links, nothing else.
 
 // Set when the repository is published: "owner/repo".
-const REPO = 'vkorona26-oss/2p';
-const VERSION = '3.2.0';
+const REPO = 'vkorona26-oss/tupac';
+const VERSION = '4.0.0';
 
 const nav = document.getElementById('nav');
 const onScroll = () => nav.classList.toggle('solid', window.scrollY > 12);
@@ -19,8 +19,8 @@ function releaseUrl(file) {
 const installer = document.getElementById('dl-installer');
 const portable = document.getElementById('dl-portable');
 
-if (installer) installer.href = releaseUrl(`2P-${VERSION}-Setup.exe`);
-if (portable) portable.href = releaseUrl(`2P-${VERSION}-portable.zip`);
+if (installer) installer.href = releaseUrl(`Tupac-${VERSION}-Setup.exe`);
+if (portable) portable.href = releaseUrl(`Tupac-${VERSION}-portable.zip`);
 
 for (const link of document.querySelectorAll('[data-download]')) {
   if (link.id) continue;

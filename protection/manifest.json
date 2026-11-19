@@ -1,0 +1,24 @@
+{
+  "schema": 1,
+  "checked": "2026-11-19T20:01:44Z",
+  "notes": "First Tupac pack. Signature table mirrors src/internal/offsets.h; patterns resolve per Roblox build.",
+  "packs": {
+    "stable": {
+      "version": "4.0.0",
+      "robloxBuild": null,
+      "url": "https://raw.githubusercontent.com/vkorona26-oss/tupac/main/protection/packs/4.0.0.json",
+      "sha256": "772607051ea69321ad61a53b5fbe05bf43ee40ee850ff20917ca26055fe30e32",
+      "offsets": {
+        "luau_execute": false,
+        "luau_load": false,
+        "lua_pcall": false,
+        "lua_tolstring": false,
+        "lua_newthread": false,
+        "lua_pushcclosure": false,
+        "lua_pushlstring": false,
+        "lua_setglobal": false,
+        "lua_topointer": false
+      }
+    }
+  }
+}

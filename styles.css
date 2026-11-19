@@ -65,15 +65,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .nav-inner { display: flex; align-items: center; gap: 28px; width: min(var(--wrap), calc(100% - 48px)); }
 
 .brand { display: flex; align-items: center; gap: 10px; }
-.logo {
-  width: 30px; height: 30px;
-  display: grid; place-items: center;
-  border-radius: 9px;
-  background: linear-gradient(145deg, var(--accent), #1f8f66);
-  color: #04120c;
-  font: 800 12px/1 var(--sans);
-  letter-spacing: .2px;
-}
+.logo { width: 30px; height: 30px; border-radius: 9px; display: block; }
 .brand-name { font-size: 17px; font-weight: 700; letter-spacing: -.2px; }
 
 .nav-links { display: flex; gap: 22px; margin-left: 8px; }
@@ -251,6 +243,34 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .features h3 { margin: 0 0 8px; font-size: 15.5px; letter-spacing: -.2px; }
 .features p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.6; }
 
+/* channels */
+
+.channels { grid-template-columns: repeat(2, 1fr); }
+
+.channel { padding: 22px; }
+.channel-head { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.channel-head .icon {
+  display: grid; place-items: center;
+  width: 32px; height: 32px;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  border: 1px solid rgba(61, 220, 151, .18);
+  color: var(--accent);
+}
+.channel-head .icon svg { width: 16px; height: 16px; }
+.channel-head h3 { margin: 0; font-size: 15px; letter-spacing: -.2px; }
+.channel-head .tag {
+  margin-left: auto;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--line-2);
+  color: var(--dim);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+.channel .checks { gap: 10px; }
+.channel .checks li { font-size: 13px; }
+
 /* gallery */
 
 .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -365,6 +385,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
   .hero-inner { grid-template-columns: 1fr; gap: 44px; }
   .hero-copy > p { max-width: 560px; }
   .features { grid-template-columns: repeat(2, 1fr); }
+  .channels { grid-template-columns: 1fr; }
   .download-wrap { grid-template-columns: 1fr; }
 }
 
