@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>2P — the Roblox toolchain, evolved</title>
+<meta name="description" content="2P is a Windows workspace for Roblox scripting: Luau editor, script hub, live console, multi-client injection and a built-in MCP bridge.">
+<meta name="theme-color" content="#0a0a0b">
+<link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+<link rel="stylesheet" href="styles.css">
+<meta property="og:title" content="2P — the Roblox toolchain, evolved">
+<meta property="og:description" content="Editor, hub, console, clients. One workspace.">
+<meta property="og:image" content="assets/home.jpeg">
+<meta property="og:type" content="website">
+</head>
+<body>
+
+<header class="nav" id="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#top">
+      <span class="logo">2P</span>
+      <span class="brand-name">2P</span>
+    </a>
+    <nav class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#workspace">Workspace</a>
+      <a href="#requirements">Requirements</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <div class="nav-actions">
+      <a class="btn ghost" href="https://discord.gg/ojailbreaks" target="_blank" rel="noreferrer">Discord</a>
+      <a class="btn light" href="#download" data-download>Download</a>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="hero-glow"></div>
+    <div class="wrap hero-inner">
+      <div class="hero-copy">
+        <span class="eyebrow"><i></i> v3.2.0 — Windows 10 / 11</span>
+        <h1>The Roblox toolchain,<br><span class="accent">evolved.</span></h1>
+        <p>2P is one window for the whole loop: write Luau, run it against a live client, watch the console, keep the scripts that worked. No browser tab, no launcher chain, no ad wall.</p>
+        <div class="hero-cta">
+          <a class="btn light lg" href="#download" data-download>
+            <svg viewBox="0 0 24 24"><path d="M12 3v10M8 9l4 4 4-4M5 18h14"/></svg>
+            Download for Windows
+          </a>
+          <a class="btn ghost lg" href="#workspace">See the workspace</a>
+        </div>
+        <div class="hero-meta">
+          <span>64-bit</span><span class="dot"></span>
+          <span>10 MB</span><span class="dot"></span>
+          <span>No key to browse</span>
+        </div>
+      </div>
+      <div class="hero-shot">
+        <div class="frame">
+          <div class="frame-bar"><span class="tl"></span><span class="tl"></span><span class="tl"></span><span class="frame-title">2P</span></div>
+          <img src="assets/home.jpeg" alt="2P home screen with the season card, hero and stats" width="800" height="616">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="strip">
+    <div class="wrap strip-inner">
+      <div><b>6</b><span>sections</span></div>
+      <div><b>4</b><span>console channels</span></div>
+      <div><b>6</b><span>themes</span></div>
+      <div><b>0</b><span>ads</span></div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Everything in the window</span>
+        <h2>Built like a workbench, not a launcher.</h2>
+        <p>Each part of the loop has a place, and every place is wired to the same pipe the module serves.</p>
+      </div>
+
+      <div class="grid features">
+        <article class="card">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M9 6 4 12l5 6M15 6l5 6-5 6"/></svg>
+          </span>
+          <h3>Luau editor</h3>
+          <p>Syntax highlighting, a real gutter, auto-indent, Tab block-indent, <code>Ctrl+Enter</code> to run and <code>Ctrl+S</code> to save. Tabs keep their own state.</p>
+        </article>
+
+        <article class="card">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="11" rx="2"/><path d="M9 20h6M12 16v4"/></svg>
+          </span>
+          <h3>Live console</h3>
+          <p>Roblox output, terminal and problems split into channels. Lines keep arriving after a run times out, so nothing the module printed is lost.</p>
+        </article>
+
+        <article class="card">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M13 3 5 14h5l-1 7 8-11h-5z"/></svg>
+          </span>
+          <h3>Script hub</h3>
+          <p>Works offline with a bundled catalog, then layers a remote index on top. Search, Run and Open, with the code cached so the list survives a restart.</p>
+        </article>
+
+        <article class="card">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M9 9h6v6H9z"/></svg>
+          </span>
+          <h3>Roblox installs</h3>
+          <p>Reads every version in <code>%LOCALAPPDATA%\Roblox\Versions</code>, shows which bootstrappers are present, and launches a client without patching anything.</p>
+        </article>
+
+        <article class="card">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><path d="M9 3v5M15 3v5M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v5"/></svg>
+          </span>
+          <h3>MCP bridge</h3>
+          <p>Point an AI client at the bundled MCP server and it drives the same named pipe this window does. One dispatcher, no second implementation.</p>
+        </article>
+
+        <article class="card">
+          <span class="icon">
+            <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v16M4 12h16"/></svg>
+          </span>
+          <h3>Themes and layout</h3>
+          <p>Six themes, optional interface grid, editor font size and tab width. Everything writes to one settings file and comes back on launch.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section alt" id="workspace">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Screens</span>
+        <h2>The workspace, as it ships.</h2>
+      </div>
+
+      <div class="gallery">
+        <figure class="shot wide">
+          <img src="assets/editor.jpeg" alt="2P editor with a tab open and the console showing output" width="800" height="616" loading="lazy">
+          <figcaption><b>Editor</b> — tabs, toolbar, welcome screen, console panel and the injection pill.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/scripts.jpeg" alt="2P script hub with three cards" width="800" height="616" loading="lazy">
+          <figcaption><b>Script hub</b> — bundled entries, search, Run and Open.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/roblox.jpeg" alt="2P Roblox installation page" width="800" height="616" loading="lazy">
+          <figcaption><b>Roblox</b> — versions, bootstrappers, launch.</figcaption>
+        </figure>
+        <figure class="shot">
+          <img src="assets/settings.jpeg" alt="2P appearance settings with the theme grid" width="800" height="616" loading="lazy">
+          <figcaption><b>Settings</b> — appearance, themes, editor, terminal, keybinds.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="download">
+    <div class="wrap download-wrap">
+      <div class="download-copy">
+        <span class="eyebrow">Get 2P</span>
+        <h2>Download the workspace.</h2>
+        <p>The desktop app is a self-contained Windows build. The browser bridge ships beside it: same UI, same dispatcher, no Electron.</p>
+
+        <div class="download-actions">
+          <a class="btn light lg" id="dl-installer" href="https://github.com" target="_blank" rel="noreferrer" data-download>
+            <svg viewBox="0 0 24 24"><path d="M12 3v10M8 9l4 4 4-4M5 18h14"/></svg>
+            <span>2P-3.2.0-Setup.exe<i>Installer · 64-bit</i></span>
+          </a>
+          <a class="btn lg" id="dl-portable" href="https://github.com" target="_blank" rel="noreferrer" data-download>
+            <svg viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5h8v2"/></svg>
+            <span>2P-3.2.0-portable.zip<i>No install · unzip and run</i></span>
+          </a>
+        </div>
+
+        <p class="fineprint" id="download-note">Checksums are published with every release. Windows SmartScreen may ask once for an unsigned build.</p>
+      </div>
+
+      <aside class="card req-card" id="requirements">
+        <h3>Requirements</h3>
+        <ul class="checks">
+          <li>Windows 10 or 11, 64-bit</li>
+          <li>Roblox Player installed</li>
+          <li>The 2P module (<code>robx</code>) next to the app</li>
+          <li>4 GB RAM · 60 MB disk</li>
+          <li>WebView2 / Electron runtime, bundled</li>
+        </ul>
+        <h3>Quick start</h3>
+        <ol class="steps">
+          <li>Run the installer and open <b>2P</b>.</li>
+          <li>Join a Roblox game and let the client finish loading.</li>
+          <li>Press <b>Inject</b>, then <b>Execute</b>.</li>
+        </ol>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section alt" id="faq">
+    <div class="wrap">
+      <div class="section-head">
+        <span class="eyebrow">Answers</span>
+        <h2>Questions that come up.</h2>
+      </div>
+
+      <div class="faq">
+        <details open>
+          <summary>Is 2P free?</summary>
+          <p>The workspace ships free. A licence key unlocks the module side; browsing the editor, hub and settings works without one.</p>
+        </details>
+        <details>
+          <summary>Which Roblox versions are supported?</summary>
+          <p>Whatever is installed under <code>%LOCALAPPDATA%\Roblox\Versions</code>. The module needs a signature table matched to the client build — the app will say when it is not injected instead of pretending.</p>
+        </details>
+        <details>
+          <summary>Does it work with Fishstrap or Bloxstrap?</summary>
+          <p>The Roblox page detects both and shows whether they are installed. It never patches them; launching stays theirs.</p>
+        </details>
+        <details>
+          <summary>Can I use my own scripts?</summary>
+          <p>Yes. Save to the local store, drag a <code>.lua</code> file onto the editor, or drop files into the auto-execute folder and they run in name order after injection.</p>
+        </details>
+        <details>
+          <summary>Where is my data?</summary>
+          <p>Everything lives in <code>%LOCALAPPDATA%\2P</code>: settings, saved scripts, auto-execute files and the hub cache. Nothing is uploaded.</p>
+        </details>
+        <details>
+          <summary>Why does the console say timeout?</summary>
+          <p>Because the script may still be running. Only the module's <code>[robx] executed</code> sentinel counts as success; a timeout is reported as a timeout.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta">
+    <div class="wrap cta-inner">
+      <div>
+        <h2>Open the bench.</h2>
+        <p>Download, inject, execute. The rest of the loop is already wired.</p>
+      </div>
+      <div class="cta-actions">
+        <a class="btn light lg" href="#download" data-download>Download 2P</a>
+        <a class="btn ghost lg" href="https://discord.gg/ojailbreaks" target="_blank" rel="noreferrer">Join the Discord</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div class="footer-brand">
+      <span class="logo">2P</span>
+      <div>
+        <b>2P</b>
+        <p>The Roblox toolchain, evolved.</p>
+      </div>
+    </div>
+    <div class="footer-links">
+      <a href="#features">Features</a>
+      <a href="#download">Download</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://discord.gg/ojailbreaks" target="_blank" rel="noreferrer">Discord</a>
+    </div>
+    <p class="footer-note">Not affiliated with Roblox Corporation. Use only where you have permission.</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
