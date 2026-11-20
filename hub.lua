@@ -5,7 +5,7 @@
     Unload: getgenv().OJBHub.Unload()
 ]]
 
-local VERSION = "1.0.0"
+local VERSION = "1.1.0"
 
 if getgenv().OJBHub and getgenv().OJBHub.Unload then
     pcall(getgenv().OJBHub.Unload)
@@ -23,6 +23,61 @@ local VirtualUser      = game:GetService("VirtualUser")
 local LP  = Players.LocalPlayer
 local PG  = LP:WaitForChild("PlayerGui")
 local CAM = workspace.CurrentCamera
+
+local MarketplaceService = game:GetService("MarketplaceService")
+
+-- ============================================================
+-- CAPABILITIES  (level 3-8 executors: degrade, never error)
+-- ============================================================
+local CAP = {
+    writefile = type(writefile) == "function",
+    readfile  = type(readfile) == "function",
+    clipboard = type(setclipboard) == "function" or type(toclipboard) == "function",
+    touch     = type(firetouchinterest) == "function",
+    clickDet  = type(fireclickdetector) == "function",
+    prompt    = type(fireproximityprompt) == "function",
+    keypress  = type(keypress) == "function",
+    http      = type(game.HttpGet) == "function" or type(game.HttpGetAsync) == "function",
+    mouse     = type(mouse1click) == "function",
+}
+
+-- ============================================================
+-- GAME DETECTION
+-- ============================================================
+local GAME_WORDS = {
+    PS99 = { "pet simulator 99", "pet sim 99", "ps99" },
+    PGO  = { "pets go", "pets go!" },
+    GAG  = { "grow a garden" },
+    ETFB = { "escape tsunami", "tsunami for brainrots", "brainrots" },
+}
+
+local GAME_LABEL = {
+    PS99 = "Pet Simulator 99",
+    PGO  = "Pets GO!",
+    GAG  = "Grow a Garden",
+    ETFB = "Escape Tsunami for Brainrots",
+    UNIVERSAL = "Universal",
+}
+
+local function detectGame()
+    local names = { tostring(game.Name) }
+    pcall(function()
+        local info = MarketplaceService:GetProductInfo(game.PlaceId)
+        if info and info.Name then table.insert(names, tostring(info.Name)) end
+    end)
+    for key, words in pairs(GAME_WORDS) do
+        for _, raw in ipairs(names) do
+            local low = raw:lower()
+            for _, w in ipairs(words) do
+                if low:find(w, 1, true) then return key, raw end
+            end
+        end
+    end
+    return "UNIVERSAL", tostring(game.Name)
+end
+
+local DETECTED_KEY, DETECTED_NAME = detectGame()
+local activeGame = DETECTED_KEY
 
 -- ============================================================
 -- THEME
@@ -207,13 +262,26 @@ local gui = new("ScreenGui", {
 local window = new("Frame", {
     Name = "Window",
     Size = UDim2.fromOffset(WIN_W, WIN_H),
-    Position = UDim2.new(0.5, -WIN_W / 2, 0.5, -WIN_H / 2),
+    AnchorPoint = Vector2.new(0.5, 0.5),
+    Position = UDim2.fromScale(0.5, 0.5),
     BackgroundColor3 = THEME.Bg,
     BorderSizePixel = 0,
     ClipsDescendants = false,
 }, gui)
 new("UICorner", { CornerRadius = UDim.new(0, 10) }, window)
 local winStroke = new("UIStroke", { Color = THEME.Stroke, Thickness = 1 }, window)
+
+-- phones: shrink the whole window, never overflow the viewport
+local uiScale = new("UIScale", { Scale = 1 }, window)
+local function fitScreen()
+    local vp = (CAM and CAM.ViewportSize) or Vector2.new(1280, 720)
+    local s = math.min(1, (vp.X - 24) / WIN_W, (vp.Y - 24) / WIN_H)
+    uiScale.Scale = clamp(s, 0.5, 1)
+end
+fitScreen()
+if CAM then
+    track(CAM:GetPropertyChangedSignal("ViewportSize"):Connect(fitScreen))
+end
 new("Frame", {
     Size = UDim2.new(1, 0, 0, 1),
     Position = UDim2.fromOffset(0, TOP_H),
@@ -576,6 +644,9 @@ local function addTextbox(page, label, placeholder, flag, cb)
         Flags[flag] = box.Text
         if cb then task.spawn(cb, box.Text) end
     end)
+    bind(flag, function(v)
+        box.Text = tostring(v)
+    end)
     return box
 end
 
@@ -741,8 +812,23 @@ local function addDropdown(page, label, optionsFn, default, flag, cb)
     return valueLbl
 end
 
-local function addPanel(page, height)
-    local p = new("ScrollingFrame", {
+local function addNote(page, text, color)
+    local l = new("TextLabel", {
+        Size = UDim2.new(0, page.w, 0, 30),
+        Position = UDim2.fromOffset(page.x, page.y),
+        BackgroundTransparency = 1,
+        Text = text,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.GothamMedium,
+        TextSize = 11,
+        TextColor3 = color or THEME.Sub,
+    }, page.frame)
+    page.y = page.y + 34
+    return l
+end
+
+local function addPanel(page, height)    local p = new("ScrollingFrame", {
         Size = UDim2.new(0, page.w, 0, height),
         Position = UDim2.fromOffset(page.x, page.y),
         BackgroundColor3 = THEME.Panel,
@@ -1285,6 +1371,381 @@ Features.copyPlace = function()
 end
 
 -- ============================================================
+-- TOOLKIT  (the machinery that works in all supported games)
+-- ============================================================
+local T = {
+    promptOn = false, promptRadius = 45, promptFilter = "",
+    touchOn = false, touchFilter = "coin,gem,cash,diamond,money",
+    clickOn = false, clickCps = 8,
+    keyOn = false, keyCode = Enum.KeyCode.E,
+}
+
+local promptCache, touchCache = {}, {}
+local scanAcc, promptAcc, touchAcc, clickAcc, keyAcc = 0, 0, 0, 0, 0
+
+local COLLECT_WORDS = {
+    "coin", "gem", "cash", "money", "diamond", "brainrot", "crop", "fruit",
+    "seed", "egg", "collect", "orb", "chest", "star", "token", "ticket", "loot",
+}
+
+local function pathOf(obj)
+    local ok, full = pcall(function() return obj:GetFullName() end)
+    return ok and full or tostring(obj.Name)
+end
+
+local function matchFilter(text, filter)
+    if not filter or filter == "" then return true end
+    local low = tostring(text):lower()
+    for token in string.gmatch(filter, "[^,%s]+") do
+        if low:find(token:lower(), 1, true) then return true end
+    end
+    return false
+end
+
+local function refreshCache()
+    local prompts, parts = {}, {}
+    local budget = 0
+    for _, obj in ipairs(workspace:GetDescendants()) do
+        budget = budget + 1
+        if budget > 8000 then break end
+        if obj:IsA("ProximityPrompt") then
+            if #prompts < 300 then table.insert(prompts, obj) end
+        elseif obj:IsA("BasePart") then
+            if #parts < 400 then
+                local low = obj.Name:lower()
+                for _, word in ipairs(COLLECT_WORDS) do
+                    if low:find(word, 1, true) then
+                        table.insert(parts, obj)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    promptCache, touchCache = prompts, parts
+end
+
+local function firePrompt(prompt)
+    if CAP.prompt then
+        pcall(fireproximityprompt, prompt)
+        return
+    end
+    pcall(function()
+        prompt:InputHoldBegin()
+        task.wait(0.05)
+        prompt:InputHoldEnd()
+    end)
+end
+
+local function clickAt(pos)
+    if CAP.mouse then
+        pcall(mouse1click, pos)
+        return
+    end
+    pcall(function()
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton1(pos)
+    end)
+end
+
+local function tapKey(code)
+    if not CAP.keypress then return end
+    pcall(keypress, code)
+    task.delay(0.04, function()
+        pcall(keyrelease, code)
+    end)
+end
+
+track(RunService.Heartbeat:Connect(function(dt)
+    dt = dt or 0
+
+    scanAcc = scanAcc + dt
+    if scanAcc >= 2 then
+        scanAcc = 0
+        pcall(refreshCache)
+    end
+
+    local hrp = root()
+
+    promptAcc = promptAcc + dt
+    if T.promptOn and promptAcc >= 0.35 and hrp then
+        promptAcc = 0
+        for _, prompt in ipairs(promptCache) do
+            if prompt.Parent and prompt.Enabled then
+                local part = prompt.Parent
+                if part:IsA("BasePart") then
+                    local text = (prompt.ActionText or "") .. " " .. (prompt.ObjectText or "") .. " " .. part.Name
+                    if matchFilter(text, T.promptFilter)
+                        and (part.Position - hrp.Position).Magnitude <= T.promptRadius then
+                        firePrompt(prompt)
+                    end
+                end
+            end
+        end
+    end
+
+    touchAcc = touchAcc + dt
+    if T.touchOn and touchAcc >= 0.25 and hrp then
+        touchAcc = 0
+        if CAP.touch then
+            for _, part in ipairs(touchCache) do
+                if part.Parent and matchFilter(part.Name, T.touchFilter) then
+                    if (part.Position - hrp.Position).Magnitude <= T.promptRadius then
+                        pcall(firetouchinterest, hrp, part, 0)
+                        pcall(firetouchinterest, hrp, part, 1)
+                    end
+                end
+            end
+        end
+    end
+
+    clickAcc = clickAcc + dt
+    if T.clickOn and clickAcc >= (1 / math.max(T.clickCps, 1)) then
+        clickAcc = 0
+        local vp = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+        clickAt(Vector2.new(vp.X / 2, vp.Y / 2))
+    end
+
+    keyAcc = keyAcc + dt
+    if T.keyOn and keyAcc >= 0.12 then
+        keyAcc = 0
+        tapKey(T.keyCode)
+    end
+end))
+
+-- ---------- scanner window ----------
+local scanGui
+
+local function openList(title, rows)
+    if scanGui then scanGui:Destroy() end
+    scanGui = new("ScreenGui", {
+        Name = "OJBHubScan",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        DisplayOrder = 620,
+    }, PG)
+
+    local frame = new("Frame", {
+        Size = UDim2.fromOffset(420, 360),
+        Position = UDim2.new(0.5, -210, 0.5, -180),
+        BackgroundColor3 = THEME.Bg,
+        BorderSizePixel = 0,
+    }, scanGui)
+    new("UICorner", { CornerRadius = UDim.new(0, 9) }, frame)
+    new("UIStroke", { Color = THEME.Stroke, Thickness = 1 }, frame)
+
+    new("TextLabel", {
+        Size = UDim2.new(1, -70, 0, 34),
+        Position = UDim2.fromOffset(14, 4),
+        BackgroundTransparency = 1,
+        Text = title,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Font = Enum.Font.GothamBold,
+        TextSize = 13,
+        TextColor3 = THEME.Text,
+    }, frame)
+
+    local close = new("TextButton", {
+        Size = UDim2.fromOffset(26, 22),
+        Position = UDim2.new(1, -36, 0, 6),
+        BackgroundColor3 = THEME.Row,
+        BorderSizePixel = 0,
+        Text = "x",
+        Font = Enum.Font.GothamBold,
+        TextSize = 13,
+        TextColor3 = THEME.Red,
+        AutoButtonColor = false,
+    }, frame)
+    new("UICorner", { CornerRadius = UDim.new(0, 5) }, close)
+    close.MouseButton1Click:Connect(function()
+        scanGui:Destroy()
+    end)
+
+    local list = new("ScrollingFrame", {
+        Size = UDim2.new(1, -16, 1, -48),
+        Position = UDim2.fromOffset(8, 38),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        CanvasSize = UDim2.fromOffset(0, #rows * 30 + 8),
+        ScrollBarThickness = 4,
+        ScrollBarImageColor3 = THEME.Stroke,
+    }, frame)
+
+    for i, row in ipairs(rows) do
+        local b = new("TextButton", {
+            Size = UDim2.new(1, -8, 0, 28),
+            Position = UDim2.fromOffset(2, (i - 1) * 30),
+            BackgroundColor3 = THEME.Row,
+            BorderSizePixel = 0,
+            Text = "  " .. tostring(row.text),
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            Font = Enum.Font.GothamMedium,
+            TextSize = 11,
+            TextColor3 = THEME.Text,
+            AutoButtonColor = false,
+        }, list)
+        new("UICorner", { CornerRadius = UDim.new(0, 5) }, b)
+        b.MouseEnter:Connect(function() b.BackgroundColor3 = THEME.Stroke end)
+        b.MouseLeave:Connect(function() b.BackgroundColor3 = THEME.Row end)
+        b.MouseButton1Click:Connect(row.action)
+    end
+
+    local dragging, dragStart, startPos = false, nil, nil
+    local bar = new("TextButton", {
+        Size = UDim2.new(1, 0, 0, 34),
+        BackgroundTransparency = 1,
+        Text = "",
+    }, frame)
+    bar.MouseButton1Down:Connect(function()
+        dragging = true
+        dragStart = UIS:GetMouseLocation()
+        startPos = frame.Position
+    end)
+    track(UIS.InputChanged:Connect(function(input)
+        if not dragging then return end
+        local now = UIS:GetMouseLocation()
+        local delta = now - dragStart
+        frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end))
+    track(UIS.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end))
+end
+
+local Toolkit = {}
+
+function Toolkit.scanPrompts()
+    refreshCache()
+    local rows = {}
+    for i, prompt in ipairs(promptCache) do
+        if i > 150 then break end
+        local label = (prompt.ActionText ~= "" and prompt.ActionText) or prompt.Parent.Name
+        rows[#rows + 1] = {
+            text = label .. "  |  " .. pathOf(prompt.Parent),
+            action = function()
+                firePrompt(prompt)
+                notify("Fired: " .. tostring(prompt.Parent.Name), "success")
+            end,
+        }
+    end
+    if #rows == 0 then
+        notify("No ProximityPrompts found", "error")
+        return
+    end
+    openList("Prompts (" .. #rows .. ")", rows)
+end
+
+function Toolkit.scanRemotes()
+    local rows = {}
+    local container = game:GetService("ReplicatedStorage")
+    for _, obj in ipairs(container:GetDescendants()) do
+        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+            local path = pathOf(obj)
+            rows[#rows + 1] = {
+                text = path,
+                action = function()
+                    if copy(path) then
+                        notify("Copied path", "success")
+                    else
+                        notify(path, "info")
+                    end
+                end,
+            }
+            if #rows >= 200 then break end
+        end
+    end
+    if #rows == 0 then
+        notify("No remotes under ReplicatedStorage", "error")
+        return
+    end
+    openList("Remotes (" .. #rows .. ")", rows)
+end
+
+function Toolkit.scanParts()
+    refreshCache()
+    local rows = {}
+    for i, part in ipairs(touchCache) do
+        if i > 150 then break end
+        rows[#rows + 1] = {
+            text = part.Name .. "  |  " .. pathOf(part),
+            action = function()
+                local hrp = root()
+                if hrp and CAP.touch then
+                    pcall(firetouchinterest, hrp, part, 0)
+                    pcall(firetouchinterest, hrp, part, 1)
+                    notify("Touched: " .. part.Name, "success")
+                else
+                    notify("No firetouchinterest", "error")
+                end
+            end,
+        }
+    end
+    if #rows == 0 then
+        notify("No collectible parts found", "error")
+        return
+    end
+    openList("Parts (" .. #rows .. ")", rows)
+end
+
+-- ---------- remote firer ----------
+local function remotePaths()
+    local out = {}
+    for _, obj in ipairs(game:GetService("ReplicatedStorage"):GetDescendants()) do
+        if obj:IsA("RemoteEvent") then
+            table.insert(out, pathOf(obj))
+            if #out >= 150 then break end
+        end
+    end
+    return out
+end
+
+local function resolvePath(path)
+    local node = game
+    for seg in string.gmatch(tostring(path), "[^%.]+") do
+        local child = node:FindFirstChild(seg)
+        if not child then return nil end
+        node = child
+    end
+    return node
+end
+
+local function parseArgs(text)
+    local out = {}
+    if not text or text == "" then return out end
+    for token in string.gmatch(text, "[^,]+") do
+        local t = token:gsub("^%s+", ""):gsub("%s+$", "")
+        local num = tonumber(t)
+        if num then
+            table.insert(out, num)
+        elseif t == "true" then
+            table.insert(out, true)
+        elseif t == "false" then
+            table.insert(out, false)
+        else
+            table.insert(out, t:gsub('^"', ""):gsub('"$', ""))
+        end
+    end
+    return out
+end
+
+function Toolkit.fireRemote(path, argsText)    local remote = resolvePath(path)
+    if not remote then
+        notify("Remote not found", "error")
+        return
+    end
+    local args = parseArgs(argsText)
+    local ok = pcall(function()
+        remote:FireServer(table.unpack(args))
+    end)
+    notify(ok and ("Fired " .. tostring(remote.Name)) or "Fire failed", ok and "success" or "error")
+end
+
+Toolkit.State = T
+
+-- ============================================================
 -- PAGES
 -- ============================================================
 local pages = {}
@@ -1385,6 +1846,161 @@ addSection(main, "Flight")
 addToggle(main, "Fly", false, "fly", function(v) Features.fly(v) end)
 addSlider(main, "Fly Speed", 10, 300, 50, 1, "flySpeed", function(v) Features.flySpeed(v) end)
 
+-- ---------- GAME + FARM ----------
+local gamePage = addTab("Game", "★")
+local farmPage = addTab("Farm", "⚡")
+
+local function callSetter(flag, v)
+    if Setters[flag] then pcall(Setters[flag], v) end
+end
+
+addSection(farmPage, "Proximity Prompts")
+addToggle(farmPage, "Auto Prompts", false, "autoPrompt", function(on) T.promptOn = on end)
+addSlider(farmPage, "Prompt Radius", 10, 150, 45, 5, "promptRadius", function(v) T.promptRadius = v end)
+addTextbox(farmPage, "Prompt Filter", "hatch, egg, collect", "promptFilter", function(text) T.promptFilter = text end)
+
+addSection(farmPage, "Collectibles")
+if CAP.touch then
+    addToggle(farmPage, "Auto Touch Collect", false, "autoTouch", function(on) T.touchOn = on end)
+else
+    addNote(farmPage, "firetouchinterest missing on this executor - touch collect off.", THEME.Red)
+end
+addTextbox(farmPage, "Name Filter", "coin, gem, cash", "touchFilter", function(text) T.touchFilter = text end)
+
+addSection(farmPage, "Click / Keys")
+addToggle(farmPage, "Auto Click", false, "autoClick", function(on) T.clickOn = on end)
+addSlider(farmPage, "Clicks Per Second", 1, 30, 8, 1, "clickCps", function(v) T.clickCps = v end)
+if CAP.keypress then
+    addToggle(farmPage, "Auto Keypress", false, "autoKey", function(on) T.keyOn = on end)
+    addKeybind(farmPage, "Key", Enum.KeyCode.E, "autoKeyCode", function(key) T.keyCode = key end)
+else
+    addNote(farmPage, "keypress missing on this executor - auto keypress off.", THEME.Red)
+end
+
+addSection(farmPage, "Tools")
+addButton(farmPage, "Scan Proximity Prompts", THEME.Text, function() Toolkit.scanPrompts() end)
+addButton(farmPage, "Scan Collectible Parts", THEME.Text, function() Toolkit.scanParts() end)
+addButton(farmPage, "Scan Remotes", THEME.Text, function() Toolkit.scanRemotes() end)
+
+addSection(farmPage, "Remote Firer")
+addDropdown(farmPage, "Remote", remotePaths, "-", "remotePath")
+local argsBox = addTextbox(farmPage, "Args", "1, true, \"text\"", "remoteArgs")
+addButton(farmPage, "Fire Remote", THEME.Text, function()
+    local path = Flags.remotePath
+    if not path or path == "-" then
+        notify("Pick a remote first", "error")
+        return
+    end
+    Toolkit.fireRemote(path, argsBox.Text)
+end)
+
+-- ---------- GAME ----------
+local GAME_PRESETS = {
+    PS99 = {
+        prompts = "hatch, egg, open, rebirth, rank, upgrade",
+        touch = "coin, gem, diamond, cash, money",
+        note = "Auto-hatch fires the egg ProximityPrompts in range. Auto-collect touches coin and gem parts. Turn the radius up to 90 for a full area sweep.",
+    },
+    PGO = {
+        prompts = "egg, hatch, open, rebirth, upgrade",
+        touch = "coin, gold, gem, cash, money",
+        note = "Same layout as PS99: egg prompts hatch, coin parts collect. Radius 60-90 covers most spawn areas.",
+    },
+    GAG = {
+        prompts = "plant, harvest, collect, sell, water, buy",
+        touch = "crop, fruit, seed, plant, harvest",
+        note = "Plant and harvest are prompts on the plots. Auto-collect touches crop and fruit parts. Keep the radius at 40 or you will fire neighbouring plots.",
+    },
+    ETFB = {
+        prompts = "escape, collect, open, rescue, brainrot",
+        touch = "brainrot, coin, cash, money",
+        note = "Collect touches brainrot parts. Escape prompts fire the exit interactions. Speed and fly live in Main if the round is going badly.",
+    },
+    UNIVERSAL = {
+        prompts = "",
+        touch = "coin, gem, cash, money",
+        note = "Game not recognised. Scan the prompts and parts first, then type the names you see into the filters on the Farm tab.",
+    },
+}
+
+local GAME_ORDER = { "PS99", "PGO", "GAG", "ETFB", "UNIVERSAL" }
+
+local function labelToKey(label)
+    for _, key in ipairs(GAME_ORDER) do
+        if GAME_LABEL[key] == label then return key end
+    end
+    return "UNIVERSAL"
+end
+
+local function gameLabels()
+    local out = {}
+    for _, key in ipairs(GAME_ORDER) do table.insert(out, GAME_LABEL[key]) end
+    return out
+end
+
+local function buildGamePage(key)
+    local page = gamePage
+    for _, child in ipairs(page.frame:GetChildren()) do
+        child:Destroy()
+    end
+    page.y = 12
+
+    local preset = GAME_PRESETS[key] or GAME_PRESETS.UNIVERSAL
+
+    addSection(page, GAME_LABEL[key] or "Universal")
+    addNote(page, "Detected: " .. DETECTED_NAME, THEME.Accent)
+    addDropdown(page, "Game", gameLabels, GAME_LABEL[key] or "Universal", "gamePick", function(label)
+        activeGame = labelToKey(label)
+        buildGamePage(activeGame)
+    end)
+
+    addSection(page, "One Tap")
+    addButton(page, "Apply Farm Preset", THEME.Accent, function()
+        T.promptFilter = preset.prompts
+        T.touchFilter = preset.touch
+        callSetter("promptFilter", preset.prompts)
+        callSetter("touchFilter", preset.touch)
+        callSetter("autoPrompt", true)
+        if CAP.touch then callSetter("autoTouch", true) end
+        notify(GAME_LABEL[key] .. " preset armed", "success")
+    end)
+    addButton(page, "Auto Hatch / Interact", THEME.Text, function()
+        T.promptFilter = preset.prompts
+        callSetter("promptFilter", preset.prompts)
+        callSetter("autoPrompt", true)
+        notify("Prompts on", "success")
+    end)
+    if CAP.touch then
+        addButton(page, "Auto Collect", THEME.Text, function()
+            T.touchFilter = preset.touch
+            callSetter("touchFilter", preset.touch)
+            callSetter("autoTouch", true)
+            notify("Collect on", "success")
+        end)
+    end
+    addButton(page, "Auto Click", THEME.Text, function()
+        callSetter("autoClick", true)
+        notify("Click on", "success")
+    end)
+    addButton(page, "Stop Everything", THEME.Red, function()
+        callSetter("autoPrompt", false)
+        callSetter("autoTouch", false)
+        callSetter("autoClick", false)
+        callSetter("autoKey", false)
+        notify("All automation off", "info")
+    end)
+
+    addSection(page, "Scan")
+    addButton(page, "Scan Prompts", THEME.Text, function() Toolkit.scanPrompts() end)
+    addButton(page, "Scan Collectibles", THEME.Text, function() Toolkit.scanParts() end)
+
+    addSection(page, "How This Works")
+    addNote(page, preset.note)
+    addNote(page, "Filters live on the Farm tab. Presets only fill them in and switch the toggles.", THEME.Sub)
+end
+
+buildGamePage(activeGame)
+
 -- ---------- VISUALS ----------
 local vis = addTab("Visuals", "◉")
 addSection(vis, "Players")
@@ -1439,6 +2055,20 @@ addSlider(set, "UI Transparency", 0, 60, 0, 5, "uiAlpha", function(v)
 end)
 addToggle(set, "Notifications", true, "notifications", function(v) notifyOn = v end)
 addKeybind(set, "Menu Key", Enum.KeyCode.RightShift, "menuKey", function(key) menuKey = key end)
+
+addSection(set, "Executor")
+do
+    local missing = {}
+    for name, present in pairs(CAP) do
+        if not present then table.insert(missing, name) end
+    end
+    table.sort(missing)
+    if #missing == 0 then
+        addNote(set, "All optional APIs present. Every module is live.", THEME.Green)
+    else
+        addNote(set, "Missing: " .. table.concat(missing, ", ") .. ". Those widgets are switched off, everything else runs.", THEME.Sub)
+    end
+end
 
 addSection(set, "Config")
 local cfgName = addTextbox(set, "Config Name", "default", "configName")
@@ -1541,7 +2171,8 @@ do
     local dragStart, startPos
 
     topbar.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.Touch then
             dragging = true
             dragStart = input.Position
             startPos = window.Position
@@ -1554,7 +2185,8 @@ do
     end)
     track(UIS.InputChanged:Connect(function(input)
         if not dragging then return end
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
+        if input.UserInputType == Enum.UserInputType.MouseMovement
+            or input.UserInputType == Enum.UserInputType.Touch then
             local delta = input.Position - dragStart
             window.Position = UDim2.new(
                 startPos.X.Scale,
@@ -1588,6 +2220,29 @@ closeBtn = topButton("×", -32, THEME.Red, function()
     Features.unload()
 end)
 
+-- phones have no RightShift: floating reopen button
+if UIS.TouchEnabled then
+    local float = new("TextButton", {
+        Name = "OJBHubFloat",
+        Size = UDim2.fromOffset(46, 46),
+        AnchorPoint = Vector2.new(1, 1),
+        Position = UDim2.new(1, -14, 1, -14),
+        BackgroundColor3 = THEME.Accent,
+        BackgroundTransparency = 0.25,
+        BorderSizePixel = 0,
+        Text = "T",
+        Font = Enum.Font.GothamBlack,
+        TextSize = 18,
+        TextColor3 = Color3.new(1, 1, 1),
+        AutoButtonColor = false,
+        ZIndex = 50,
+    }, gui)
+    new("UICorner", { CornerRadius = UDim.new(1, 0) }, float)
+    float.MouseButton1Click:Connect(function()
+        window.Visible = not window.Visible
+    end)
+end
+
 track(UIS.InputBegan:Connect(function(input, processed)
     if processed then return end
     if input.KeyCode == menuKey then
@@ -1606,9 +2261,13 @@ getgenv().OJBHub = {
     Unload = Features.unload,
     Flags = Flags,
     Features = Features,
+    Toolkit = Toolkit,
+    Game = activeGame,
+    Detected = DETECTED_NAME,
+    Capabilities = CAP,
 }
 
 notify("OJB HUB v" .. VERSION .. " loaded", "success")
-notify("RightShift toggles the menu", "info")
+notify("Game: " .. (GAME_LABEL[activeGame] or "Universal"), "info")
 
 print("[OJB HUB] v" .. VERSION .. " ready | " .. tostring(game.PlaceId))
