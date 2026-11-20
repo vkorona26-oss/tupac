@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OJB HUB</title>
+<style>
+  :root { color-scheme: dark; }
+  body { margin:0; min-height:100vh; display:grid; place-items:center; background:#101014; color:#eaeaF2;
+         font:14px/1.6 ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,sans-serif; }
+  main { width:min(680px,92vw); padding:40px 0; }
+  .logo { width:44px; height:44px; border-radius:12px; background:#7a5cff; display:grid; place-items:center;
+          font-weight:900; font-size:20px; }
+  h1 { font-size:26px; margin:18px 0 4px; letter-spacing:-.02em; }
+  p.sub { color:#8e8e9c; margin:0 0 26px; }
+  .tag { display:inline-block; padding:2px 8px; border:1px solid #32323e; border-radius:99px; font-size:11px; color:#8e8e9c; }
+  pre { background:#17171c; border:1px solid #2a2a34; border-radius:10px; padding:16px; overflow:auto;
+        font:12.5px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace; color:#c9c9d6; }
+  button { margin-top:10px; padding:9px 16px; border-radius:8px; border:1px solid #7a5cff; background:#7a5cff;
+           color:#fff; font-weight:600; cursor:pointer; }
+  button:active { transform:translateY(1px); }
+  ul { color:#8e8e9c; padding-left:18px; }
+  footer { margin-top:32px; color:#5e5e6c; font-size:12px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="logo">O</div>
+  <h1>OJB HUB <span class="tag">v1.0.0</span></h1>
+  <p class="sub">Paste this in your executor. Nothing else to install.</p>
+  <pre id="code">loadstring(game:HttpGet("https://vkorona26-oss.github.io/tupac/Exec"))()</pre>
+  <button onclick="navigator.clipboard.writeText(document.getElementById('code').textContent).then(()=>{this.textContent='copied';setTimeout(()=>this.textContent='copy',1200)})">copy</button>
+  <ul>
+    <li>drag the window, RightShift hides it</li>
+    <li>character, flight, ESP, teleport, server tools, configs</li>
+    <li>unload with the button or <code>getgenv().OJBHub.Unload()</code></li>
+  </ul>
+  <footer>loader 1.0.0 &middot; https://vkorona26-oss.github.io/tupac</footer>
+</main>
+</body>
+</html>

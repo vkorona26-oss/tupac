@@ -1,0 +1,185 @@
+--[[
+    OJB HUB  |  loader  |  v1.0.0
+    Executed as:  loadstring(game:HttpGet("<your-host>/Exec"))()
+
+    Fetches the hub, checks it, runs it. Nothing else.
+    Change HUB_URL / MIRRORS to your own host. That is the only edit needed.
+]]
+
+local LOADER_VERSION = "1.0.0"
+
+local HUB_URL = "https://vkorona26-oss.github.io/tupac/hub.lua"
+
+local MIRRORS = {
+    "https://raw.githubusercontent.com/vkorona26-oss/tupac/main/hub.lua",
+    "https://cdn.jsdelivr.net/gh/vkorona26-oss/tupac@main/hub.lua",
+}
+
+-- Set to a URL that returns exactly "valid" for a good key. Empty = key system off.
+local KEY_URL = ""
+local KEY_FILE = "OJBHub/key.txt"
+
+local MARKER = "OJB HUB"
+local MIN_BYTES = 4000
+
+-- ============================================================
+-- helpers
+-- ============================================================
+local function fetch(url)
+    local ok, body = pcall(function()
+        return game:HttpGet(url, true)
+    end)
+    if not ok or type(body) ~= "string" then return nil, "request failed" end
+    if #body < MIN_BYTES then return nil, "response too small (" .. #body .. "B)" end
+    if not body:find(MARKER, 1, true) then return nil, "marker missing" end
+    if body:sub(1, 1) == "<" then return nil, "html error page" end
+    return body
+end
+
+local function hwid()
+    if gethwid then
+        local ok, id = pcall(gethwid)
+        if ok and type(id) == "string" then return id end
+    end
+    local ok, id = pcall(function()
+        return game:GetService("RbxAnalyticsService"):GetClientId()
+    end)
+    if ok and type(id) == "string" then return id end
+    return "unknown"
+end
+
+local function splash(text, color)
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "OJBLoader"
+    gui.ResetOnSpawn = false
+    gui.IgnoreGuiInset = true
+    gui.DisplayOrder = 1000
+    gui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.fromOffset(260, 64)
+    frame.Position = UDim2.new(0.5, -130, 0.5, -32)
+    frame.BackgroundColor3 = Color3.fromRGB(16, 16, 20)
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 9)
+    corner.Parent = frame
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color or Color3.fromRGB(122, 92, 255)
+    stroke.Thickness = 1
+    stroke.Transparency = 0.4
+    stroke.Parent = frame
+
+    local title = Instance.new("TextLabel")
+    title.Size = UDim2.new(1, -24, 0, 18)
+    title.Position = UDim2.fromOffset(14, 12)
+    title.BackgroundTransparency = 1
+    title.Text = "OJB HUB"
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 13
+    title.TextColor3 = Color3.fromRGB(234, 234, 242)
+    title.Parent = frame
+
+    local sub = Instance.new("TextLabel")
+    sub.Name = "Status"
+    sub.Size = UDim2.new(1, -24, 0, 16)
+    sub.Position = UDim2.fromOffset(14, 34)
+    sub.BackgroundTransparency = 1
+    sub.Text = text or "loading..."
+    sub.TextXAlignment = Enum.TextXAlignment.Left
+    sub.Font = Enum.Font.GothamMedium
+    sub.TextSize = 11
+    sub.TextColor3 = Color3.fromRGB(142, 142, 156)
+    sub.Parent = frame
+
+    return gui, sub, stroke
+end
+
+local function fail(gui, msg)
+    local status = gui and gui:FindFirstChild("Frame") and gui.Frame:FindFirstChild("Status")
+    if status then
+        status.Text = msg
+        status.TextColor3 = Color3.fromRGB(255, 92, 92)
+    end
+    task.delay(3, function()
+        if gui then gui:Destroy() end
+    end)
+    warn("[OJB HUB] " .. msg)
+end
+
+-- ============================================================
+-- key gate (off unless KEY_URL is set)
+-- ============================================================
+local function keyOk()
+    if KEY_URL == "" then return true end
+
+    local stored = nil
+    if readfile and isfile then
+        local ok, data = pcall(function()
+            if isfile(KEY_FILE) then return readfile(KEY_FILE) end
+        end)
+        if ok then stored = data end
+    end
+
+    if not stored or stored == "" then return false end
+
+    local url = KEY_URL .. "?key=" .. tostring(stored):gsub("%s+", "") .. "&hwid=" .. hwid()
+    local ok, res = pcall(function()
+        return game:HttpGet(url, true)
+    end)
+    if not ok or type(res) ~= "string" then return false end
+    return res:lower():find("valid", 1, true) ~= nil
+end
+
+-- ============================================================
+-- boot
+-- ============================================================
+local gui, status = splash("checking key...", Color3.fromRGB(122, 92, 255))
+
+if not keyOk() then
+    fail(gui, "key required - join the discord")
+    return
+end
+
+status.Text = "fetching hub..."
+
+local source, err = fetch(HUB_URL)
+local usedMirror = false
+
+if not source then
+    for _, url in ipairs(MIRRORS) do
+        if url ~= HUB_URL then
+            status.Text = "trying mirror..."
+            source, err = fetch(url)
+            if source then
+                usedMirror = true
+                break
+            end
+        end
+    end
+end
+
+if not source then
+    fail(gui, "load failed: " .. tostring(err))
+    return
+end
+
+status.Text = "running v" .. LOADER_VERSION .. (usedMirror and " (mirror)" or "") .. "..."
+
+local chunk, compileErr = loadstring(source, "OJBHub")
+if not chunk then
+    fail(gui, "compile error: " .. tostring(compileErr))
+    return
+end
+
+local ok, runErr = pcall(chunk)
+if not ok then
+    fail(gui, "runtime error: " .. tostring(runErr))
+    return
+end
+
+if gui then gui:Destroy() end
