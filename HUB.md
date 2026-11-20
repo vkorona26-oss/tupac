@@ -26,11 +26,20 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/vkorona26-oss/tupac/m
 
 | Tab | Modules |
 |---|---|
+| Game | detected game preset (PS99 / PGO / GaG / ETFB), one-tap farm, scanners |
+| Farm | auto prompts, auto touch collect, auto click, auto keypress, remote firer |
 | Main | walk speed, jump power, infinite jump, noclip, anti-AFK, anti-void, reset, fly + speed |
 | Visuals | player ESP, ESP names + health bars, fullbright, camera FOV |
 | Teleport | waypoints (saved to disk), teleport to player, teleport to cursor |
 | Misc | rejoin, server hop, join by JobId, copy JobId, copy PlaceId |
-| Settings | UI transparency, notifications, menu keybind, config save/load/delete, unload |
+| Settings | UI transparency, notifications, menu keybind, capability readout, configs, unload |
+
+Supported games: Pet Simulator 99, Pets GO, Grow a Garden, Escape Tsunami for Brainrots.
+Detection is by `game.Name` + `MarketplaceService:GetProductInfo`, never hardcoded PlaceIds.
+
+Mobile: the window scales to the viewport and a floating `T` button opens it.
+Executor levels 3-8: optional APIs are probed at boot, missing ones switch off their
+widget instead of erroring.
 
 RightShift hides the menu. Unload with the button or `getgenv().OJBHub.Unload()` —
 lighting, FOV, walk/jump, fly bodies, ESP, connections and GUI all restored.
